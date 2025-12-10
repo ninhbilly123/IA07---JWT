@@ -1,0 +1,83 @@
+import { createContext, useContext, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { authAPI, tokenManager } from '../api/endpoints';
+
+const AuthContext = createContext(null);
+
+export const AuthProvider = ({ children }) => {
+  const [isInitialized, setIsInitialized] = useState(false);
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  // Check if user is authenticated on mount
+  useEffect(() => {
+    const initializeAuth = () => {
+      const refreshToken = tokenManager.getRefreshToken();
+      setIsInitialized(true);
+      
+      if (!refreshToken) {
+        setIsInitialized(true);
+      }
+    };
+
+    initializeAuth();
+  }, []);
+
+  // Login mutation
+  const loginMutation = useMutation({
+    mutationFn: authAPI.login,
+    onSuccess: (data) => {
+      queryClient.setQueryData(['currentUser'], data.user);
+      navigate('/dashboard');
+    },
+  });
+
+  // Logout mutation
+  const logoutMutation = useMutation({
+    mutationFn: authAPI.logout,
+    onSuccess: () => {
+      queryClient.clear();
+      navigate('/login');
+    },
+  });
+
+  // Get current user query
+  const { data: user, isLoading: isLoadingUser } = useQuery({
+    queryKey: ['currentUser'],
+    queryFn: authAPI.getCurrentUser,
+    enabled: !!tokenManager.getAccessToken(),
+    retry: false,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  const login = async (credentials) => {
+    return loginMutation.mutateAsync(credentials);
+  };
+
+  const logout = async () => {
+    return logoutMutation.mutateAsync();
+  };
+
+  const isAuthenticated = !!user || !!tokenManager.getAccessToken();
+
+  const value = {
+    user,
+    login,
+    logout,
+    isAuthenticated,
+    isLoading: !isInitialized || isLoadingUser,
+    isLoginLoading: loginMutation.isPending,
+    loginError: loginMutation.error,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
