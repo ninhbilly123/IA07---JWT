@@ -47,13 +47,22 @@ export const AuthProvider = ({ children }) => {
   });
 
   // Get current user query
-  const { data: user, isLoading: isLoadingUser } = useQuery({
+  const { data: user, isLoading: isLoadingUser, error } = useQuery({
     queryKey: ['currentUser'],
     queryFn: authAPI.getCurrentUser,
     enabled: !!tokenManager.getAccessToken() || !!tokenManager.getRefreshToken(),
     retry: false,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
+
+  // If user query fails (token expired), clear tokens and redirect
+  useEffect(() => {
+    if (error && (tokenManager.getAccessToken() || tokenManager.getRefreshToken())) {
+      tokenManager.clearTokens();
+      queryClient.clear();
+      navigate('/login');
+    }
+  }, [error, navigate, queryClient]);
 
   const login = async (credentials) => {
     return loginMutation.mutateAsync(credentials);
