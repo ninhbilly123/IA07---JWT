@@ -1,7 +1,8 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { authAPI, tokenManager } from '../api/endpoints';
+import { authAPI } from '../api/endpoints';
+import { tokenManager } from '../api/axios';
 
 const AuthContext = createContext(null);
 
@@ -28,6 +29,8 @@ export const AuthProvider = ({ children }) => {
   const loginMutation = useMutation({
     mutationFn: authAPI.login,
     onSuccess: (data) => {
+      tokenManager.setAccessToken(data.accessToken);
+      tokenManager.setRefreshToken(data.refreshToken);
       queryClient.setQueryData(['currentUser'], data.user);
       navigate('/dashboard');
     },
@@ -37,6 +40,7 @@ export const AuthProvider = ({ children }) => {
   const logoutMutation = useMutation({
     mutationFn: authAPI.logout,
     onSuccess: () => {
+      tokenManager.clearTokens();
       queryClient.clear();
       navigate('/login');
     },
@@ -46,7 +50,7 @@ export const AuthProvider = ({ children }) => {
   const { data: user, isLoading: isLoadingUser } = useQuery({
     queryKey: ['currentUser'],
     queryFn: authAPI.getCurrentUser,
-    enabled: !!tokenManager.getAccessToken(),
+    enabled: !!tokenManager.getAccessToken() || !!tokenManager.getRefreshToken(),
     retry: false,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
@@ -59,7 +63,7 @@ export const AuthProvider = ({ children }) => {
     return logoutMutation.mutateAsync();
   };
 
-  const isAuthenticated = !!user || !!tokenManager.getAccessToken();
+  const isAuthenticated = !!user || !!tokenManager.getRefreshToken();
 
   const value = {
     user,

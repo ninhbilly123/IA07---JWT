@@ -3,11 +3,11 @@ import cors from 'cors';
 import jwt from 'jsonwebtoken';
 
 const app = express();
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 
 // Secret keys (in production, use environment variables)
-const ACCESS_TOKEN_SECRET = 'your-access-token-secret-key-change-in-production';
-const REFRESH_TOKEN_SECRET = 'your-refresh-token-secret-key-change-in-production';
+const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET || 'your-access-token-secret-key-change-in-production';
+const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET || 'your-refresh-token-secret-key-change-in-production';
 
 // Token expiration times (shortened for testing)
 const ACCESS_TOKEN_EXPIRY = '30s'; // 30 seconds 

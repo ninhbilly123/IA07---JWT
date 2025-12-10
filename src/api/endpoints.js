@@ -1,50 +1,42 @@
-import { mockAPI } from './mockAPI';
-
-// Token management for mock mode
-const mockTokenManager = {
-  getAccessToken: () => localStorage.getItem('mockAccessToken'),
-  setAccessToken: (token) => localStorage.setItem('mockAccessToken', token),
-  getRefreshToken: () => localStorage.getItem('mockRefreshToken'),
-  setRefreshToken: (token) => localStorage.setItem('mockRefreshToken', token),
-  clearTokens: () => {
-    localStorage.removeItem('mockAccessToken');
-    localStorage.removeItem('mockRefreshToken');
-  },
-};
-
-export { mockTokenManager as tokenManager };
+import apiClient, { tokenManager } from './axios';
 
 // Authentication API
 export const authAPI = {
   login: async (credentials) => {
-    const data = await mockAPI.login(credentials);
-    mockTokenManager.setAccessToken(data.accessToken);
-    mockTokenManager.setRefreshToken(data.refreshToken);
-    return data;
+    const response = await apiClient.post('/auth/login', credentials);
+    return response.data;
   },
 
   logout: async () => {
-    await mockAPI.logout();
-    mockTokenManager.clearTokens();
+    const refreshToken = tokenManager.getRefreshToken();
+    if (refreshToken) {
+      await apiClient.post('/auth/logout', { refreshToken });
+    }
+    tokenManager.clearTokens();
   },
 
   getCurrentUser: async () => {
-    return await mockAPI.getCurrentUser();
+    const response = await apiClient.get('/auth/me');
+    return response.data;
   },
 
   refreshToken: async (refreshToken) => {
-    // Mock refresh - just return same token
-    return { accessToken: refreshToken };
+    const response = await apiClient.post('/auth/refresh', { refreshToken });
+    return response.data;
   },
 };
 
 // User API
 export const userAPI = {
   getStats: async () => {
-    return await mockAPI.getStats();
+    const response = await apiClient.get('/user/stats');
+    return response.data;
   },
 
   getDashboard: async () => {
-    return await mockAPI.getDashboard();
+    const response = await apiClient.get('/dashboard');
+    return response.data;
   },
 };
+
+export { tokenManager };
